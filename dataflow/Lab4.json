@@ -1,0 +1,61 @@
+{
+	"name": "Lab4",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "ADSL_Product",
+						"type": "DatasetReference"
+					},
+					"name": "Product"
+				},
+				{
+					"dataset": {
+						"referenceName": "ADSL_ProductCategory",
+						"type": "DatasetReference"
+					},
+					"name": "ProductCategory"
+				},
+				{
+					"dataset": {
+						"referenceName": "ADSL_ProductModel",
+						"type": "DatasetReference"
+					},
+					"name": "ProductModel"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "Parquet1",
+						"type": "DatasetReference"
+					},
+					"name": "wrtietodatalake"
+				}
+			],
+			"transformations": [
+				{
+					"name": "SELECT"
+				},
+				{
+					"name": "SELECTCATEGORY"
+				},
+				{
+					"name": "SELECTMODEL"
+				},
+				{
+					"name": "lookup1"
+				},
+				{
+					"name": "Lookup2"
+				},
+				{
+					"name": "removeduplicate"
+				}
+			],
+			"script": "source(output(\n\t\tProductID as short,\n\t\tName as string,\n\t\tProductNumber as string,\n\t\tColor as string,\n\t\tStandardCost as double,\n\t\tListPrice as double,\n\t\tSize as string,\n\t\tWeight as double,\n\t\tProductCategoryID as short,\n\t\tProductModelID as short,\n\t\tSellStartDate as string,\n\t\tSellEndDate as string,\n\t\tDiscontinuedDate as string,\n\t\tThumbNailPhoto as string,\n\t\tThumbnailPhotoFileName as string,\n\t\trowguid as string,\n\t\tModifiedDate as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false) ~> Product\nsource(output(\n\t\tProductCategoryID as short,\n\t\tParentProductCategoryID as string,\n\t\tName as string,\n\t\trowguid as string,\n\t\tModifiedDate as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false) ~> ProductCategory\nsource(output(\n\t\tProductModelID as short,\n\t\tName as string,\n\t\tCatalogDescription as string,\n\t\trowguid as string,\n\t\tModifiedDate as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false) ~> ProductModel\nProduct select(mapColumn(\n\t\tProductID,\n\t\tName,\n\t\tProductNumber,\n\t\tColor,\n\t\tStandardCost,\n\t\tListPrice,\n\t\tSize,\n\t\tWeight,\n\t\tProductCategoryID,\n\t\tProductModelID,\n\t\tSellStartDate,\n\t\tSellEndDate,\n\t\tDiscontinuedDate,\n\t\tThumbNailPhoto,\n\t\tThumbnailPhotoFileName,\n\t\trowguid,\n\t\tModifiedDate\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> SELECT\nProductCategory select(mapColumn(\n\t\tProductCategoryID,\n\t\tParentProductCategoryID,\n\t\tProductCategory = Name,\n\t\trowguid,\n\t\tModifiedDate\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> SELECTCATEGORY\nProductModel select(mapColumn(\n\t\tProductModelID,\n\t\tProductModel = Name,\n\t\tCatalogDescription,\n\t\trowguid,\n\t\tModifiedDate\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> SELECTMODEL\nSELECT, SELECTCATEGORY lookup(SELECT@ProductCategoryID == SELECTCATEGORY@ProductCategoryID,\n\tmultiple: false,\n\tpickup: 'any',\n\tbroadcast: 'auto')~> lookup1\nlookup1, SELECTMODEL lookup(SELECT@ProductModelID == SELECTMODEL@ProductModelID,\n\tmultiple: false,\n\tpickup: 'any',\n\tbroadcast: 'auto')~> Lookup2\nLookup2 select(mapColumn(\n\t\tProductID,\n\t\tName,\n\t\tProductNumber,\n\t\tColor,\n\t\tStandardCost,\n\t\tListPrice,\n\t\tSize,\n\t\tWeight,\n\t\tProductCategoryID = SELECT@ProductCategoryID,\n\t\tProductModelID = SELECT@ProductModelID,\n\t\tSellStartDate,\n\t\tSellEndDate,\n\t\tDiscontinuedDate,\n\t\tThumbNailPhoto,\n\t\tThumbnailPhotoFileName,\n\t\trowguid = SELECT@rowguid,\n\t\tModifiedDate = SELECT@ModifiedDate,\n\t\tParentProductCategoryID,\n\t\tProductCategory,\n\t\trowguid = SELECTCATEGORY@rowguid,\n\t\tModifiedDate = SELECTCATEGORY@ModifiedDate,\n\t\tProductModel,\n\t\tCatalogDescription,\n\t\trowguid = SELECTMODEL@rowguid,\n\t\tModifiedDate = SELECTMODEL@ModifiedDate\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> removeduplicate\nremoveduplicate sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tformat: 'parquet',\n\tumask: 0022,\n\tpreCommands: [],\n\tpostCommands: [],\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> wrtietodatalake"
+		}
+	}
+}

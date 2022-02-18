@@ -1,0 +1,9 @@
+{
+	"name": "adf-MN-lab",
+	"location": "francecentral",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "5df56b02-b510-4319-9c05-763609f3aeb9",
+		"tenantId": "d6397071-8e3e-45d2-a2d6-36698acf0fea"
+	}
+}
